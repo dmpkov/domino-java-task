@@ -1,4 +1,4 @@
-package com.dmpkov.domino;
+package com.dmpkov.domino.model;
 
 public class DominoTile {
     private int left;

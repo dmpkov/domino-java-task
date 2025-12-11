@@ -1,4 +1,4 @@
-package com.dmpkov.domino;
+package com.dmpkov.domino.model;
 
 import java.util.ArrayList;
 import java.util.Collections;

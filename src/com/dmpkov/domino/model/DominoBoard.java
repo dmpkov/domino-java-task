@@ -1,4 +1,6 @@
-package com.dmpkov.domino;
+package com.dmpkov.domino.model;
+
+import com.dmpkov.domino.model.DominoTile;
 
 import java.util.LinkedList;
 
