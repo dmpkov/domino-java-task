@@ -1,7 +1,5 @@
 package com.dmpkov.domino.model;
 
-import com.dmpkov.domino.model.DominoTile;
-
 import java.util.LinkedList;
 
 public class DominoBoard {
@@ -21,6 +19,10 @@ public class DominoBoard {
         }
     }
 
+    public LinkedList<DominoTile> getChain() {
+        return chain;
+    }
+
     public int getLeftValue() {
         return chain.isEmpty() ? -1 : chain.getFirst().getLeft();
     }
@@ -33,15 +35,7 @@ public class DominoBoard {
         return chain.isEmpty();
     }
 
-    @Override
-    public String toString() {
-        if (chain.isEmpty()) return "Empty Board";
-        StringBuilder sb = new StringBuilder();
-        sb.append("(L) ");
-        for (DominoTile tile : chain) {
-            sb.append(tile).append(" ");
-        }
-        sb.append("(R)");
-        return sb.toString();
+    public void clear() {
+        chain.clear();
     }
 }
