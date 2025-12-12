@@ -2,78 +2,83 @@ package com.dmpkov.domino.service;
 
 import com.dmpkov.domino.model.DominoBoard;
 import com.dmpkov.domino.model.DominoTile;
+import com.dmpkov.domino.model.Game;
 import com.dmpkov.domino.model.Player;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class GameService {
-    private DominoBoard board;
-    private List<DominoTile> deck;
-    private List<Player> players;
 
-    private Map<Player, List<DominoTile>> playerHands;
-
-    private int currentPlayerIndex;
-    private boolean isGameOver;
-    private String statusMessage;
+    private Game game;
 
     public GameService() {
-        this.board = new DominoBoard();
-        this.players = new ArrayList<>();
-        this.deck = new ArrayList<>();
-        this.playerHands = new HashMap<>();
+        this.game = new Game();
     }
 
     public void startNewGame(int numberOfPlayers) {
-        board.clear();
-        players.clear();
-        playerHands.clear();
-        deck = generateDeck();
-        isGameOver = false;
-        statusMessage = "Игра началась! Ваш ход.";
+        game.reset();
+
+        game.setDeck(generateDeck());
+        game.setStatusMessage("Игра началась! Ваш ход.");
 
         for (int i = 0; i < numberOfPlayers; i++) {
             boolean isBot = (i > 0);
             Player newPlayer = new Player(isBot ? "Бот " + i : "Игрок", isBot);
-            players.add(newPlayer);
-            playerHands.put(newPlayer, new ArrayList<>());
+            game.getPlayers().add(newPlayer);
+            game.getPlayerHands().put(newPlayer, new ArrayList<>());
         }
 
         for (int k = 0; k < 7; k++) {
-            for (Player p : players) {
-                if (!deck.isEmpty()) {
-                    playerHands.get(p).add(deck.remove(0));
+            for (Player p : game.getPlayers()) {
+                if (!game.getDeck().isEmpty()) {
+                    game.getPlayerHands().get(p).add(game.getDeck().remove(0));
                 }
             }
         }
-        currentPlayerIndex = 0;
+    }
+
+
+    public DominoBoard getBoard() { return game.getBoard(); }
+    public String getStatusMessage() { return game.getStatusMessage(); }
+    public boolean isGameOver() { return game.isGameOver(); }
+    public int getDeckSize() { return game.getDeck().size(); }
+    public List<Player> getPlayers() { return game.getPlayers(); }
+
+    public Player getCurrentPlayer() {
+        if (game.getPlayers().isEmpty()) return null;
+        return game.getPlayers().get(game.getCurrentPlayerIndex());
+    }
+
+    public List<DominoTile> getPlayerHand(Player p) {
+        return game.getPlayerHands().get(p);
     }
 
     public void handleDraw(Player player) {
         if (hasAnyMove(player)) {
-            statusMessage = "У вас есть подходящая карта! Ходите.";
+            game.setStatusMessage("У вас есть подходящая карта! Ходите.");
             return;
         }
 
         boolean foundPlayable = false;
 
-        while (!deck.isEmpty()) {
-            DominoTile t = deck.remove(0);
+        while (!game.getDeck().isEmpty()) {
+            DominoTile t = game.getDeck().remove(0);
             giveTileToPlayer(player, t);
 
             if (canPlaceTile(t)) {
-                statusMessage = player.getName() + " вытянул " + t + ". Теперь можно ходить.";
+                game.setStatusMessage(player.getName() + " вытянул " + t + ". Теперь можно ходить.");
                 foundPlayable = true;
                 break;
             }
         }
 
-        if (!foundPlayable && deck.isEmpty()) {
-            statusMessage = player.getName() + " не нашел ход и ПАСУЕТ (базар пуст).";
+        if (!foundPlayable && game.getDeck().isEmpty()) {
+            game.setStatusMessage(player.getName() + " не нашел ход и ПАСУЕТ (базар пуст).");
             nextTurn();
         }
     }
-
 
     public boolean humanTurn(DominoTile tile, boolean toLeft) {
         Player p = getCurrentPlayer();
@@ -84,7 +89,7 @@ public class GameService {
         if (tryToPlace(tile, toLeft)) {
             removeTileFromPlayer(p, tile);
             checkWinCondition();
-            if (!isGameOver) nextTurn();
+            if (!game.isGameOver()) nextTurn();
             return true;
         }
         return false;
@@ -92,22 +97,22 @@ public class GameService {
 
     public void botTurn() {
         Player p = getCurrentPlayer();
-        if (!p.isBot() || isGameOver) return;
+        if (!p.isBot() || game.isGameOver()) return;
 
-        statusMessage = "Ходит " + p.getName() + "...";
+        game.setStatusMessage("Ходит " + p.getName() + "...");
 
         if (tryBotMove(p)) {
             checkWinCondition();
-            if (!isGameOver) nextTurn();
+            if (!game.isGameOver()) nextTurn();
             return;
         }
 
         handleDraw(p);
 
-        if (getCurrentPlayer() == p && !isGameOver) {
+        if (getCurrentPlayer() == p && !game.isGameOver()) {
             if (tryBotMove(p)) {
                 checkWinCondition();
-                if (!isGameOver) nextTurn();
+                if (!game.isGameOver()) nextTurn();
             } else {
                 nextTurn();
             }
@@ -130,9 +135,9 @@ public class GameService {
     }
 
     private boolean canPlaceTile(DominoTile tile) {
-        if (board.isEmpty()) return true;
-        int l = board.getLeftValue();
-        int r = board.getRightValue();
+        if (game.getBoard().isEmpty()) return true;
+        int l = game.getBoard().getLeftValue();
+        int r = game.getBoard().getRightValue();
         return tile.getLeft() == l || tile.getRight() == l || tile.getLeft() == r || tile.getRight() == r;
     }
 
@@ -146,6 +151,8 @@ public class GameService {
     }
 
     private boolean tryToPlace(DominoTile tile, boolean toLeft) {
+        DominoBoard board = game.getBoard();
+
         if (board.isEmpty()) {
             board.addTile(tile, true);
             return true;
@@ -176,15 +183,15 @@ public class GameService {
     private void checkWinCondition() {
         Player current = getCurrentPlayer();
         if (getPlayerHand(current).isEmpty()) {
-            isGameOver = true;
-            statusMessage = "ПОБЕДА! " + current.getName() + " выиграл!";
+            game.setGameOver(true);
+            game.setStatusMessage("ПОБЕДА! " + current.getName() + " выиграл!");
         }
-
     }
 
     private void nextTurn() {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-        statusMessage = "Ход: " + getCurrentPlayer().getName();
+        int nextIndex = (game.getCurrentPlayerIndex() + 1) % game.getPlayers().size();
+        game.setCurrentPlayerIndex(nextIndex);
+        game.setStatusMessage("Ход: " + getCurrentPlayer().getName());
     }
 
     private List<DominoTile> generateDeck() {
@@ -198,27 +205,11 @@ public class GameService {
         return newDeck;
     }
 
-    public int getDeckSize() {
-        return deck.size();
-    }
-
-    public List<Player> getPlayers() {
-        return players;
-    }
-    public Player getCurrentPlayer() { return players.get(currentPlayerIndex); }
-    public DominoBoard getBoard() { return board; }
-    public String getStatusMessage() { return statusMessage; }
-    public boolean isGameOver() { return isGameOver; }
-
-    public List<DominoTile> getPlayerHand(Player p) {
-        return playerHands.get(p);
-    }
-
     private void removeTileFromPlayer(Player p, DominoTile tile) {
-        playerHands.get(p).remove(tile);
+        game.getPlayerHands().get(p).remove(tile);
     }
 
     private void giveTileToPlayer(Player p, DominoTile tile) {
-        playerHands.get(p).add(tile);
+        game.getPlayerHands().get(p).add(tile);
     }
 }
